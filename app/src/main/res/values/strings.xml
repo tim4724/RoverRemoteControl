@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">remoteControl</string>
+    <string name="connect_button">connect</string>
+
+    <string name="connection_lost_message">connection lost</string>
+    <string name="connected_message">connected</string>
+</resources>
