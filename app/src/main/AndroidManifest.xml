@@ -10,7 +10,7 @@
         android:supportsRtl="false">
 
         <activity
-            android:name=".RoverControlActivity"
+            android:name=".activity.RoverControlActivity_"
             android:screenOrientation="landscape"
             android:label="@string/app_name"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar.Fullscreen">

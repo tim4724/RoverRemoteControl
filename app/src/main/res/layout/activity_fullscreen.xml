@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
-    tools:context="com.tim.domi.remotecontrol.RoverControlActivity">
+    tools:context="com.tim.domi.remotecontrol.activity.RoverControlActivity">
 
     <com.tim.domi.remotecontrol.widget.VerticalSeekBar
         android:id="@+id/speed_seekbar"
@@ -14,15 +14,15 @@
         android:layout_marginBottom="50dp"
         android:layout_marginLeft="30dp"
         android:layout_marginTop="50dp"
-        android:background="@drawable/shape"
-
         android:alpha="0.4"
 
+        android:background="@drawable/shape"
+
         android:max="100"
-        android:paddingTop="0dp"
         android:paddingBottom="0dp"
         android:paddingLeft="22dp"
         android:paddingRight="22dp"
+        android:paddingTop="0dp"
         android:progress="50"
         android:progressDrawable="@android:color/transparent"
         android:thumb="@drawable/adjust"
@@ -38,14 +38,14 @@
         android:layout_marginBottom="30dp"
         android:layout_marginLeft="30dp"
         android:layout_marginRight="30dp"
-        android:background="@drawable/shape"
         android:alpha="0.4"
+        android:background="@drawable/shape"
 
         android:max="100"
-        android:paddingTop="0dp"
         android:paddingBottom="0dp"
         android:paddingLeft="22dp"
         android:paddingRight="22dp"
+        android:paddingTop="0dp"
         android:progress="50"
         android:progressDrawable="@android:color/transparent"
         android:thumb="@drawable/circle"
@@ -58,8 +58,34 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
-        android:onClick="connectClick"
-        android:textSize="25sp"
-        android:text="@string/connect_button" />
+        android:text="@string/connect_button"
+        android:textSize="25sp" />
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingTop="5dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true">
+
+        <TextView
+            android:id="@+id/connStateView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:text="@string/conn_none"
+            android:textColor="@color/text_nomal_color"
+            android:textSize="16sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_toEndOf="@id/connStateView"
+            android:layout_alignBottom="@id/connStateView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:gravity="bottom" />
+    </RelativeLayout>
+
 
 </RelativeLayout>

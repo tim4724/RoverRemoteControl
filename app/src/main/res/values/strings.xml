@@ -2,6 +2,8 @@
     <string name="app_name">remoteControl</string>
     <string name="connect_button">connect</string>
 
-    <string name="connection_lost_message">connection lost</string>
-    <string name="connected_message">connected</string>
+    <string name="conn_none">not connected</string>
+    <string name="conn_success">connected</string>
+    <string name="conn_failed">connection failed</string>
+    <string name="conn_lost">connection lost</string>
 </resources>
