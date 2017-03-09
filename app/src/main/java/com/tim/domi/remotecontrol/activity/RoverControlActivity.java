@@ -1,114 +1,103 @@
 package com.tim.domi.remotecontrol.activity;
 
-import android.app.Activity;
 import android.view.View;
-import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.Button;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
-import android.widget.TextView;
 
 import com.tim.domi.remotecontrol.R;
 import com.tim.domi.remotecontrol.ConnectionThread;
-import com.tim.domi.remotecontrol.Util;
+import com.tim.domi.remotecontrol.widget.ConnStateView;
 
 import org.androidannotations.annotations.Click;
 import org.androidannotations.annotations.EActivity;
+import org.androidannotations.annotations.Fullscreen;
 import org.androidannotations.annotations.SeekBarProgressChange;
 import org.androidannotations.annotations.SeekBarTouchStart;
 import org.androidannotations.annotations.SeekBarTouchStop;
-import org.androidannotations.annotations.SupposeUiThread;
 import org.androidannotations.annotations.ViewById;
+import org.androidannotations.annotations.WindowFeature;
 
+@Fullscreen
 @EActivity(R.layout.activity_fullscreen)
-public class RoverControlActivity extends Activity {
+@WindowFeature(Window.FEATURE_NO_TITLE)
+public class RoverControlActivity extends BaseActivity implements ConnectionThread.Listener {
 
-    @ViewById(R.id.speed_seekbar)
-    SeekBar speedSlider;
-    @ViewById(R.id.steeringSeekBar)
-    SeekBar steeringSlider;
+    @ViewById(R.id.speed_control_view)
+    SeekBar speedControl;
+    @ViewById(R.id.steering_control_view)
+    SeekBar steeringControl;
     @ViewById(R.id.connect_button)
     Button connectButton;
-    @ViewById(R.id.connStateView)
-    TextView connStateView;
-    @ViewById(R.id.progressBar)
-    ProgressBar progressView;
+    @ViewById(R.id.conn_state_view)
+    ConnStateView connStateView;
 
     private ConnectionThread connThread;
 
     @Override
     protected void onResume() {
         super.onResume();
-        connStateView.setTextColor(getResources().getColor(R.color.text_nomal_color));
-        connStateView.setText(R.string.conn_none);
-        if (connThread != null) {
-            connectClick();
-        }
+        connStateView.newState(R.string.conn_none, color(R.color.text_nomal_color), false);
+        if (connThread != null) connect();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // make the steering slider the same size as the speed slider
+        steeringControl.getLayoutParams().width = speedControl.getMeasuredHeight();
+        steeringControl.setLayoutParams(steeringControl.getLayoutParams());
     }
 
     @Click(R.id.connect_button)
-    public void connectClick() {
+    public void connect() {
         connectButton.setEnabled(false);
-        progressView.setVisibility(View.VISIBLE);
+        connStateView.newState(R.string.conn_none, color(R.color.text_loading_color), true);
 
-        byte speed = (byte) speedSlider.getProgress();
-        byte steering = (byte) speedSlider.getProgress();
-        connThread = new ConnectionThread(speed, steering, new SendTheadListener(this), 1000);
+        connThread = new ConnectionThread(this, 1000);
+        connThread.newData(speedControl.getProgress(), steeringControl.getProgress());
         connThread.start();
     }
 
-    //<editor-fold desc="Seekbar listeners">
-    @SeekBarProgressChange({R.id.speed_seekbar, R.id.steeringSeekBar})
+    @SeekBarProgressChange({R.id.speed_control_view, R.id.steering_control_view})
     void onProgressChanged(SeekBar seekBar, int i) {
-        if (Math.abs(i - seekBar.getMax() / 2) < 5) seekBar.setProgress(seekBar.getMax() / 2);
-        connThread.newData((byte) speedSlider.getProgress(), (byte) steeringSlider.getProgress());
+        if (Math.abs(i - seekBar.getMax() / 2) < 5)
+            seekBar.setProgress(seekBar.getMax() / 2);
+        connThread.newData(speedControl.getProgress(), steeringControl.getProgress());
     }
 
-    @SeekBarTouchStart({R.id.speed_seekbar, R.id.steeringSeekBar})
+    @SeekBarTouchStart({R.id.speed_control_view, R.id.steering_control_view})
     void onStartTrackingTouch(SeekBar seekBar) {
         seekBar.setAlpha(1);
     }
 
-    @SeekBarTouchStop({R.id.speed_seekbar, R.id.steeringSeekBar})
+    @SeekBarTouchStop({R.id.speed_control_view, R.id.steering_control_view})
     void onStopTrackingTouch(SeekBar seekBar) {
         seekBar.setAlpha(0.4f);
     }
-    //</editor-fold>
 
-    //<editor-fold desc="SendDataThead listeners">
-    @SupposeUiThread
-    void connected() {
-        Util.setEnabled(true, speedSlider, steeringSlider);
-        Util.setVisibility(View.GONE, progressView, connectButton);
-
-        //set width of the horizontal seekbar
-        ViewGroup.LayoutParams layoutParams = steeringSlider.getLayoutParams();
-        layoutParams.width = speedSlider.getMeasuredHeight();
-        steeringSlider.setLayoutParams(layoutParams);
-
-        connStateView.setTextColor(getResources().getColor(R.color.text_success_color));
-        connStateView.setText(R.string.conn_success);
+    @Override
+    public void onConnected() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
+                setVisibility(View.GONE, connectButton);
+                setEnable(true, speedControl, steeringControl);
+            }
+        });
     }
 
-    @SupposeUiThread
-    void connectionLost(Exception e) {
-        Util.setEnabled(false, speedSlider, steeringSlider);
-        progressView.setVisibility(View.VISIBLE);
-
-        connStateView.setTextColor(getResources().getColor(R.color.text_error_color));
-        connStateView.setText(R.string.conn_lost);
+    @Override
+    public void onNotConnected(Exception e) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                connStateView.newState(R.string.conn_none, color(R.color.text_error_color), true);
+                setEnable(false, speedControl, steeringControl);
+            }
+        });
     }
-
-    @SupposeUiThread
-    void connectionFailed(Exception e) {
-        Util.setEnabled(true, connectButton);
-        Util.setEnabled(false, speedSlider, steeringSlider);
-        Util.setVisibility(View.GONE, speedSlider, steeringSlider, progressView);
-
-        connStateView.setTextColor(getResources().getColor(R.color.text_error_color));
-        connStateView.setText(R.string.conn_failed);
-    }
-    //</editor-fold>
 
     @Override
     protected void onPause() {

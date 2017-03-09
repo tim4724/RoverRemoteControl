@@ -13,13 +13,10 @@ public class ConnectionThread extends Thread {
     private int timeout;
 
     private boolean cancelled;
-    private boolean connectedOnce;
     private final Sender sender;
 
-    public ConnectionThread(byte speed, byte steering, Listener listener, int timeout) {
+    public ConnectionThread(Listener listener, int timeout) {
         sendData = new byte[2];
-        sendData[0] = speed;
-        sendData[1] = steering;
         this.listener = listener;
         this.timeout = timeout;
 
@@ -30,24 +27,23 @@ public class ConnectionThread extends Thread {
     public void run() {
         while (!cancelled) {
             Log.d(TAG, "Try to connect to server");
+
             try (Socket socket = new Socket("tv_test.dd-dns.de", 3842)) {
                 socket.setTcpNoDelay(true);
                 socket.setSoTimeout(timeout);
-                if(socket.getInputStream().read() != 1) throw new IOException();
-                connected();
+                if (socket.getInputStream().read() != 1) throw new IOException("read error");
+
+                Log.d(TAG, "Connected");
+                listener.onConnected();
 
                 sender.start(socket);
                 while (!interrupted() && !cancelled) {
-                    if(socket.getInputStream().read() != 1) throw new IOException();
+                    if (socket.getInputStream().read() != 1) throw new IOException("read error");
                 }
             } catch (Exception e) {
-                if (connectedOnce) {
-                    connectionLost(e);
-                    Util.sleep(250);
-                } else {
-                    connectionFailed(e);
-                    cancel();
-                }
+                Log.d(TAG, "Not connected " + e.getMessage());
+                listener.onNotConnected(e);
+                Util.sleep(250);
             }
         }
     }
@@ -73,25 +69,9 @@ public class ConnectionThread extends Thread {
         }
     }
 
-    private void connected() {
-        connectedOnce = true;
-        Log.d(TAG, "Connected");
-        listener.onConnected();
-    }
-
-    private void connectionLost(Exception e) {
-        Log.d(TAG, "Connection lost " + e.getMessage());
-        listener.onConnectionLost(e);
-    }
-
-    private void connectionFailed(Exception e) {
-        Log.d(TAG, "Failed to connect " + e.getMessage());
-        listener.onFailed(e);
-    }
-
-    public void newData(byte speed, byte steering) {
-        sendData[0] = speed;
-        sendData[1] = steering;
+    public void newData(int speed, int steering) {
+        sendData[0] = (byte) speed;
+        sendData[1] = (byte) steering;
         sender.interrupt();
     }
 
@@ -104,8 +84,6 @@ public class ConnectionThread extends Thread {
     public interface Listener {
         void onConnected();
 
-        void onConnectionLost(Exception e);
-
-        void onFailed(Exception e);
+        void onNotConnected(Exception e);
     }
 }

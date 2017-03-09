@@ -4,6 +4,4 @@
 
     <string name="conn_none">not connected</string>
     <string name="conn_success">connected</string>
-    <string name="conn_failed">connection failed</string>
-    <string name="conn_lost">connection lost</string>
 </resources>
