@@ -13,14 +13,12 @@ public class ConnectionThread extends Thread {
     private int timeout;
 
     private boolean cancelled;
-    private final Sender sender;
+    private Sender sender;
 
     public ConnectionThread(Listener listener, int timeout) {
         sendData = new byte[2];
         this.listener = listener;
         this.timeout = timeout;
-
-        sender = new Sender();
     }
 
     @Override
@@ -36,7 +34,9 @@ public class ConnectionThread extends Thread {
                 Log.d(TAG, "Connected");
                 listener.onConnected();
 
-                sender.start(socket);
+                sender = new Sender(socket);
+                sender.start();
+
                 while (!interrupted() && !cancelled) {
                     if (socket.getInputStream().read() != 1) throw new IOException("read error");
                 }
@@ -51,9 +51,8 @@ public class ConnectionThread extends Thread {
     private class Sender extends Thread {
         private Socket socket;
 
-        void start(Socket socket) {
+        Sender(Socket socket) {
             this.socket = socket;
-            super.start();
         }
 
         @Override
@@ -72,13 +71,17 @@ public class ConnectionThread extends Thread {
     public void newData(int speed, int steering) {
         sendData[0] = (byte) speed;
         sendData[1] = (byte) steering;
-        sender.interrupt();
+        if(sender != null) {
+            sender.interrupt();
+        }
     }
 
     public void cancel() {
         cancelled = true;
         this.interrupt();
-        sender.interrupt();
+        if (sender != null) {
+            sender.interrupt();
+        }
     }
 
     public interface Listener {
