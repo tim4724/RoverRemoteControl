@@ -29,14 +29,14 @@ public class ConnectionThread extends Thread {
             try (Socket socket = new Socket("tv_test.dd-dns.de", 3842)) {
                 socket.setTcpNoDelay(true);
                 socket.setSoTimeout(timeout);
+                //test connection
                 if (socket.getInputStream().read() != 1) throw new IOException("read error");
-
+                socket.getOutputStream().write(1);
                 Log.d(TAG, "Connected");
                 listener.onConnected();
 
                 sender = new Sender(socket);
                 sender.start();
-
                 while (!interrupted() && !cancelled) {
                     if (socket.getInputStream().read() != 1) throw new IOException("read error");
                 }
