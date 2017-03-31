@@ -4,9 +4,11 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import com.tim.domi.remotecontrol.Connection;
 import com.tim.domi.remotecontrol.R;
-import com.tim.domi.remotecontrol.ConnectionThread;
 import com.tim.domi.remotecontrol.widget.ConnStateView;
 
 import org.androidannotations.annotations.Click;
@@ -18,10 +20,13 @@ import org.androidannotations.annotations.SeekBarTouchStop;
 import org.androidannotations.annotations.ViewById;
 import org.androidannotations.annotations.WindowFeature;
 
+import java.net.SocketException;
+import java.net.UnknownHostException;
+
 @Fullscreen
 @EActivity(R.layout.activity_fullscreen)
 @WindowFeature(Window.FEATURE_NO_TITLE)
-public class RoverControlActivity extends BaseActivity implements ConnectionThread.Listener {
+public class RoverControlActivity extends BaseActivity implements Connection.Listener {
 
     @ViewById(R.id.speed_control_view)
     SeekBar speedControl;
@@ -31,14 +36,16 @@ public class RoverControlActivity extends BaseActivity implements ConnectionThre
     Button connectButton;
     @ViewById(R.id.conn_state_view)
     ConnStateView connStateView;
+    @ViewById(R.id.ping_view)
+    TextView pingTextView;
 
-    private ConnectionThread connThread;
+    private Connection conn;
 
     @Override
     protected void onResume() {
         super.onResume();
         connStateView.newState(R.string.conn_none, color(R.color.text_nomal_color), false);
-        if (connThread != null) connect();
+        if (conn != null) connect();
     }
 
     @Override
@@ -51,19 +58,24 @@ public class RoverControlActivity extends BaseActivity implements ConnectionThre
 
     @Click(R.id.connect_button)
     public void connect() {
-        connectButton.setEnabled(false);
-        connStateView.newState(R.string.conn_none, color(R.color.text_loading_color), true);
+        try {
+            if (conn == null) conn = new Connection(this);
+            conn.newData(speedControl.getProgress(), steeringControl.getProgress());
+            conn.start();
 
-        connThread = new ConnectionThread(this, 1000);
-        connThread.newData(speedControl.getProgress(), steeringControl.getProgress());
-        connThread.start();
+            connectButton.setEnabled(false);
+            connStateView.newState(R.string.conn_to_server, color(R.color.text_loading_color), true);
+        } catch (SocketException | UnknownHostException e) {
+            e.printStackTrace();
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     @SeekBarProgressChange({R.id.speed_control_view, R.id.steering_control_view})
     void onProgressChanged(SeekBar seekBar, int i) {
         if (Math.abs(i - seekBar.getMax() / 2) < 5)
             seekBar.setProgress(seekBar.getMax() / 2);
-        connThread.newData(speedControl.getProgress(), steeringControl.getProgress());
+        conn.newData(speedControl.getProgress(), steeringControl.getProgress());
     }
 
     @SeekBarTouchStart({R.id.speed_control_view, R.id.steering_control_view})
@@ -77,24 +89,36 @@ public class RoverControlActivity extends BaseActivity implements ConnectionThre
     }
 
     @Override
-    public void onConnected() {
+    public void updateConnState(final Connection.ConnectionState state) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
-                setVisibility(View.GONE, connectButton);
-                setEnable(true, speedControl, steeringControl);
+                switch (state) {
+                    case NOT_CONNECTED:
+                        connStateView.newState(R.string.conn_to_server, color(R.color.text_error_color), true);
+                        setEnable(false, speedControl, steeringControl);
+                        setVisibility(View.INVISIBLE, pingTextView);
+                        break;
+                    case WAITING_FOR_ROVER:
+                        connStateView.newState(R.string.wait_for_rover, color(R.color.text_error_color), true);
+                        setVisibility(View.GONE, connectButton);
+                        break;
+                    case CONNECTED:
+                        pingTextView.setEnabled(true);
+                        connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
+                        setEnable(true, speedControl, steeringControl, pingTextView);
+                        break;
+                }
             }
         });
     }
 
     @Override
-    public void onNotConnected(Exception e) {
+    public void pingUpdate(final int ping) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                connStateView.newState(R.string.conn_none, color(R.color.text_error_color), true);
-                setEnable(false, speedControl, steeringControl);
+                pingTextView.setText("" + ping);
             }
         });
     }
@@ -102,8 +126,8 @@ public class RoverControlActivity extends BaseActivity implements ConnectionThre
     @Override
     protected void onPause() {
         super.onPause();
-        if (connThread != null) {
-            connThread.cancel();
+        if (conn != null) {
+            conn.cancel();
         }
     }
 }
