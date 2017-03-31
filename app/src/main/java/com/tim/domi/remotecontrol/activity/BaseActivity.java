@@ -14,10 +14,4 @@ public abstract class BaseActivity extends Activity {
             if(enable) v.setVisibility(View.VISIBLE);
         }
     }
-
-    public void setVisibility(int visibility, View... views) {
-        for (View v : views) {
-            v.setVisibility(visibility);
-        }
-    }
 }

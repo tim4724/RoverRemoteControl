@@ -28,16 +28,11 @@ import java.net.UnknownHostException;
 @WindowFeature(Window.FEATURE_NO_TITLE)
 public class RoverControlActivity extends BaseActivity implements Connection.Listener {
 
-    @ViewById(R.id.speed_control_view)
-    SeekBar speedControl;
-    @ViewById(R.id.steering_control_view)
-    SeekBar steeringControl;
-    @ViewById(R.id.connect_button)
-    Button connectButton;
-    @ViewById(R.id.conn_state_view)
-    ConnStateView connStateView;
-    @ViewById(R.id.ping_view)
-    TextView pingTextView;
+    @ViewById(R.id.speed_control_view) SeekBar speedControl;
+    @ViewById(R.id.steering_control_view) SeekBar steeringControl;
+    @ViewById(R.id.connect_button) Button connectButton;
+    @ViewById(R.id.conn_state_view) ConnStateView connStateView;
+    @ViewById(R.id.ping_view) TextView pingTextView;
 
     private Connection conn;
 
@@ -73,8 +68,7 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
 
     @SeekBarProgressChange({R.id.speed_control_view, R.id.steering_control_view})
     void onProgressChanged(SeekBar seekBar, int i) {
-        if (Math.abs(i - seekBar.getMax() / 2) < 5)
-            seekBar.setProgress(seekBar.getMax() / 2);
+        if (Math.abs(i - seekBar.getMax() / 2) < 5) seekBar.setProgress(seekBar.getMax() / 2);
         conn.newData(speedControl.getProgress(), steeringControl.getProgress());
     }
 
@@ -97,17 +91,17 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
                     case NOT_CONNECTED:
                         connStateView.newState(R.string.conn_to_server, color(R.color.text_error_color), true);
                         setEnable(false, speedControl, steeringControl);
-                        setVisibility(View.INVISIBLE, pingTextView);
+                        pingTextView.setVisibility(View.INVISIBLE);
                         break;
                     case WAITING_FOR_ROVER:
                         connStateView.newState(R.string.wait_for_rover, color(R.color.text_error_color), true);
-                        setVisibility(View.GONE, connectButton);
+                        connectButton.setVisibility(View.GONE);
                         break;
                     case CONNECTED:
                         pingTextView.setEnabled(true);
                         connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
                         setEnable(true, speedControl, steeringControl, pingTextView);
-                        setVisibility(View.GONE, connectButton);
+                        connectButton.setVisibility(View.GONE);
                         break;
                 }
             }
