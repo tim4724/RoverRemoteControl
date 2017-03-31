@@ -96,6 +96,7 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
                     case WAITING_FOR_ROVER:
                         connStateView.newState(R.string.wait_for_rover, color(R.color.text_error_color), true);
                         connectButton.setVisibility(View.GONE);
+                        pingTextView.setVisibility(View.INVISIBLE);
                         break;
                     case CONNECTED:
                         pingTextView.setEnabled(true);
