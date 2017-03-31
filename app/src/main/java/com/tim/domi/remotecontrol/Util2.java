@@ -3,7 +3,7 @@ package com.tim.domi.remotecontrol;
 import java.io.Closeable;
 import java.io.IOException;
 
-public class Util {
+public class Util2 {
     static void sleep(int millis) {
         try {
             Thread.sleep(millis);
