@@ -107,6 +107,7 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
                         pingTextView.setEnabled(true);
                         connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
                         setEnable(true, speedControl, steeringControl, pingTextView);
+                        setVisibility(View.GONE, connectButton);
                         break;
                 }
             }
@@ -118,7 +119,7 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                pingTextView.setText("" + ping);
+                pingTextView.setText("" + Math.round(ping / 2f));
             }
         });
     }
