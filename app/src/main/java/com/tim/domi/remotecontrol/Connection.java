@@ -71,6 +71,7 @@ public class Connection {
                     parse(packet.getData());
                 } catch (IOException e) {
                     errorOccurred(e);
+                    Util.sleep(25);
                 }
             }
         }
