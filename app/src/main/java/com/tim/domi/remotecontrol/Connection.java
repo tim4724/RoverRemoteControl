@@ -48,12 +48,12 @@ public class Connection {
         public void run() {
             while (!cancelled) {
                 try {
-                    Util2.putInt((int) System.currentTimeMillis(), sendPacket.getData(), 2);
+                    Util.putInt((int) System.currentTimeMillis(), sendPacket.getData(), 2);
                     socket.send(sendPacket);
                 } catch (IOException e) {
                     errorOccurred(e);
                 }
-                if (!interrupted() && !cancelled) Util2.sleep(50);
+                if (!interrupted() && !cancelled) Util.sleep(50);
             }
         }
     }
@@ -76,8 +76,8 @@ public class Connection {
         }
 
         private void parse(byte[] data) {
-            int pingToServer = ((int) System.currentTimeMillis()) - Util2.readInt(data, 2);
-            int pingServerRover = Util2.readInt(data, 6);
+            int pingToServer = ((int) System.currentTimeMillis()) - Util.readInt(data, 2);
+            int pingServerRover = Util.readInt(data, 6);
             Log.d(TAG, "Ping to server: " + pingToServer + "; ping server rover: " + pingServerRover);
 
             if (pingServerRover == -1) {
