@@ -13,15 +13,13 @@ public class Connection {
     private static final String TAG = "Connection";
 
     private final Listener listener;
-    private final DatagramSocket socket;
-    private final DatagramPacket sendPacket;
+    private DatagramSocket socket;
     private ConnectionState state;
 
     private Thread sender, receiver;
 
-    public Connection(Listener listener) throws SocketException, UnknownHostException {
+    public Connection(Listener listener) throws SocketException {
         this.listener = listener;
-        sendPacket = new DatagramPacket(new byte[6], 0, 6, InetAddress.getByName("192.168.13.44"), 3842);
         socket = new DatagramSocket();
         socket.setSoTimeout(1000);
     }
@@ -29,46 +27,72 @@ public class Connection {
     public void start() {
         cancel();
         state = ConnectionState.NOT_CONNECTED;
-        receiver = new Receiver();
+        receiver = new Receiver(5000);
         sender = new Sender();
         receiver.start();
         sender.start();
     }
 
     public void newData(int speed, int steering) {
-        sendPacket.getData()[0] = (byte) speed;
-        sendPacket.getData()[1] = (byte) steering;
-        if (sender != null) sender.interrupt();
+        ((Sender) sender).newData(speed, steering);
     }
 
     private class Sender extends Thread {
         private boolean cancelled;
+        private byte[] data = new byte[6];
 
         @Override
         public void run() {
-            while (!cancelled) {
-                try {
-                    Util.putInt((int) System.currentTimeMillis(), sendPacket.getData(), 2);
-                    socket.send(sendPacket);
-                } catch (IOException e) {
-                    errorOccurred(e);
+            try {
+                DatagramPacket packet = new DatagramPacket(data, 0, data.length, InetAddress.getByName("tv_test.dd-dns.de"), 3842);
+                while (!cancelled) {
+                    try {
+                        Util.putInt((int) System.currentTimeMillis(), data, 2);
+                        socket.send(packet);
+                    } catch (IOException e) {
+                        errorOccurred(e);
+                    }
+                    if (!interrupted() && !cancelled) Util.sleep(150);
                 }
-                if (!interrupted() && !cancelled) Util.sleep(50);
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+                listener.failed(e);
+                cancel();
             }
+        }
+
+        void newData(int speed, int steering) {
+            data[0] = (byte) speed;
+            data[1] = (byte) steering;
+            this.interrupt();
         }
     }
 
     private class Receiver extends Thread {
         private boolean cancelled;
+        private final int connectTimeout;
+
+        Receiver(int connectTimeout) {
+            this.connectTimeout = connectTimeout;
+        }
 
         @Override
         public void run() {
             byte[] data = new byte[10];
             DatagramPacket packet = new DatagramPacket(data, data.length);
+            long connectedAt = System.currentTimeMillis();
             while (!cancelled) {
                 try {
+                    //check for connection timeout
+                    if (connectedAt + connectTimeout < System.currentTimeMillis()) {
+                        listener.failed(new IOException("Timout while trying to connect"));
+                        cancel();
+                    }
+                    //receive
                     socket.receive(packet);
-                    parse(packet.getData());
+                    state = parse(packet.getData());
+                    if (state == ConnectionState.CONNECTED)
+                        connectedAt = System.currentTimeMillis();
                 } catch (IOException e) {
                     errorOccurred(e);
                     Util.sleep(25);
@@ -76,31 +100,25 @@ public class Connection {
             }
         }
 
-        private void parse(byte[] data) {
+        private ConnectionState parse(byte[] data) {
             int pingToServer = ((int) System.currentTimeMillis()) - Util.readInt(data, 2);
             int pingServerRover = Util.readInt(data, 6);
-            Log.d(TAG, "Ping to server: " + pingToServer + "; ping server rover: " + pingServerRover);
+            Log.d(TAG, "Ping to server: " + pingToServer + ";\t ping server rover: " + pingServerRover);
 
-            if (pingServerRover == -1) {
-                if (state != ConnectionState.WAITING_FOR_ROVER) {
-                    Log.d(TAG, "Connected to server; waiting for rover");
-                    state = ConnectionState.WAITING_FOR_ROVER;
-                    listener.updateConnState(state);
-                }
-            } else {
-                if (state != ConnectionState.CONNECTED) {
-                    Log.d(TAG, "Connected to rover");
-                    state = ConnectionState.CONNECTED;
-                    listener.updateConnState(state);
-                }
-                listener.pingUpdate(pingToServer + pingServerRover);
+            ConnectionState newState = (pingServerRover == -1) ? ConnectionState.WAITING_FOR_ROVER : ConnectionState.CONNECTED;
+            if (newState != state) {
+                Log.d(TAG, newState.name());
+                listener.updateConnState(newState);
             }
+            if (newState == ConnectionState.CONNECTED)
+                listener.pingUpdate(pingToServer + pingServerRover);
+            return newState;
         }
     }
 
     private void errorOccurred(Exception e) {
-        Log.d(TAG, "Not connected " + e.getMessage());
         state = ConnectionState.NOT_CONNECTED;
+        Log.d(TAG, state.name() + ' ' + e.getMessage());
         listener.updateConnState(state);
     }
 
@@ -119,6 +137,8 @@ public class Connection {
         void updateConnState(ConnectionState state);
 
         void pingUpdate(int ping);
+
+        void failed(Exception e);
     }
 
     public enum ConnectionState {

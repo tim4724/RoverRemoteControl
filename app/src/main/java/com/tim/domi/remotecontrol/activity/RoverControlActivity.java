@@ -55,21 +55,20 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
     public void connect() {
         try {
             if (conn == null) conn = new Connection(this);
-            conn.newData(speedControl.getProgress(), steeringControl.getProgress());
             conn.start();
+            conn.newData(speedControl.getProgress(), steeringControl.getProgress());
 
             connectButton.setEnabled(false);
             connStateView.newState(R.string.conn_to_server, color(R.color.text_loading_color), true);
-        } catch (SocketException | UnknownHostException e) {
-            e.printStackTrace();
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            failed(e);
         }
     }
 
     @SeekBarProgressChange({R.id.speed_control_view, R.id.steering_control_view})
     void onProgressChanged(SeekBar seekBar, int i) {
         if (Math.abs(i - seekBar.getMax() / 2) < 5) seekBar.setProgress(seekBar.getMax() / 2);
-        conn.newData(speedControl.getProgress(), steeringControl.getProgress());
+        if (conn != null) conn.newData(speedControl.getProgress(), steeringControl.getProgress());
     }
 
     @SeekBarTouchStart({R.id.speed_control_view, R.id.steering_control_view})
@@ -99,7 +98,6 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
                         pingTextView.setVisibility(View.INVISIBLE);
                         break;
                     case CONNECTED:
-                        pingTextView.setEnabled(true);
                         connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
                         setEnable(true, speedControl, steeringControl, pingTextView);
                         connectButton.setVisibility(View.GONE);
@@ -120,10 +118,21 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
     }
 
     @Override
+    public void failed(final Exception e) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setEnable(false, speedControl, steeringControl);
+                conn = null;
+                recreate();
+                Toast.makeText(RoverControlActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
-        if (conn != null) {
-            conn.cancel();
-        }
+        if (conn != null) conn.cancel();
     }
 }
