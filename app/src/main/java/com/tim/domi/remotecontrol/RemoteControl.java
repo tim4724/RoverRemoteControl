@@ -9,8 +9,8 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
-public class Connection {
-    private static final String TAG = "Connection";
+public class RemoteControl {
+    private static final String TAG = "RemoteControl";
 
     private final Listener listener;
     private DatagramSocket socket;
@@ -18,7 +18,7 @@ public class Connection {
 
     private Thread sender, receiver;
 
-    public Connection(Listener listener) throws SocketException {
+    public RemoteControl(Listener listener) throws SocketException {
         this.listener = listener;
         socket = new DatagramSocket();
         socket.setSoTimeout(1000);

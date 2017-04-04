@@ -3,11 +3,13 @@ package com.tim.domi.remotecontrol.activity;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.tim.domi.remotecontrol.Connection;
+import com.tim.domi.remotecontrol.ImageReceiver;
+import com.tim.domi.remotecontrol.RemoteControl;
 import com.tim.domi.remotecontrol.R;
 import com.tim.domi.remotecontrol.widget.ConnStateView;
 
@@ -20,21 +22,20 @@ import org.androidannotations.annotations.SeekBarTouchStop;
 import org.androidannotations.annotations.ViewById;
 import org.androidannotations.annotations.WindowFeature;
 
-import java.net.SocketException;
-import java.net.UnknownHostException;
-
 @Fullscreen
 @EActivity(R.layout.activity_fullscreen)
 @WindowFeature(Window.FEATURE_NO_TITLE)
-public class RoverControlActivity extends BaseActivity implements Connection.Listener {
+public class RoverControlActivity extends BaseActivity implements RemoteControl.Listener, ImageReceiver.Listener {
 
     @ViewById(R.id.speed_control_view) SeekBar speedControl;
     @ViewById(R.id.steering_control_view) SeekBar steeringControl;
     @ViewById(R.id.connect_button) Button connectButton;
     @ViewById(R.id.conn_state_view) ConnStateView connStateView;
     @ViewById(R.id.ping_view) TextView pingTextView;
+    @ViewById(R.id.imageView) ImageView imageView;
 
-    private Connection conn;
+    private RemoteControl conn;
+    private ImageReceiver imageReceiver;
 
     @Override
     protected void onResume() {
@@ -54,8 +55,11 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
     @Click(R.id.connect_button)
     public void connect() {
         try {
-            if (conn == null) conn = new Connection(this);
+            if (conn == null) conn = new RemoteControl(this);
+            if (imageReceiver != null) imageReceiver.cancel();
+            //imageReceiver = new ImageReceiver(this);
             conn.start();
+            //imageReceiver.start();
             conn.newData(speedControl.getProgress(), steeringControl.getProgress());
 
             connectButton.setEnabled(false);
@@ -82,7 +86,7 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
     }
 
     @Override
-    public void updateConnState(final Connection.ConnectionState state) {
+    public void updateConnState(final RemoteControl.ConnectionState state) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -118,6 +122,18 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
     }
 
     @Override
+    public void updateImage() {
+        runOnUiThread(updateImageView);
+    }
+
+    private final Runnable updateImageView = new Runnable() {
+        @Override
+        public void run() {
+            imageView.setImageBitmap(imageReceiver.getBitmap());
+        }
+    };
+
+    @Override
     public void failed(final Exception e) {
         runOnUiThread(new Runnable() {
             @Override
@@ -134,5 +150,6 @@ public class RoverControlActivity extends BaseActivity implements Connection.Lis
     protected void onPause() {
         super.onPause();
         if (conn != null) conn.cancel();
+        if (imageReceiver != null) imageReceiver.cancel();
     }
 }
