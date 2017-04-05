@@ -8,7 +8,6 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.tim.domi.remotecontrol.ImageReceiver;
 import com.tim.domi.remotecontrol.RemoteControl;
 import com.tim.domi.remotecontrol.R;
 import com.tim.domi.remotecontrol.widget.ConnStateView;
@@ -25,7 +24,7 @@ import org.androidannotations.annotations.WindowFeature;
 @Fullscreen
 @EActivity(R.layout.activity_fullscreen)
 @WindowFeature(Window.FEATURE_NO_TITLE)
-public class RoverControlActivity extends BaseActivity implements RemoteControl.Listener, ImageReceiver.Listener {
+public class RoverControlActivity extends BaseActivity implements RemoteControl.Listener {
 
     @ViewById(R.id.speed_control_view) SeekBar speedControl;
     @ViewById(R.id.steering_control_view) SeekBar steeringControl;
@@ -35,7 +34,6 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     @ViewById(R.id.imageView) ImageView imageView;
 
     private RemoteControl conn;
-    private ImageReceiver imageReceiver;
 
     @Override
     protected void onResume() {
@@ -56,10 +54,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     public void connect() {
         try {
             if (conn == null) conn = new RemoteControl(this);
-            if (imageReceiver != null) imageReceiver.cancel();
-            //imageReceiver = new ImageReceiver(this);
             conn.start();
-            //imageReceiver.start();
             conn.newData(speedControl.getProgress(), steeringControl.getProgress());
 
             connectButton.setEnabled(false);
@@ -86,26 +81,18 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     }
 
     @Override
-    public void updateConnState(final RemoteControl.ConnectionState state) {
+    public void updateConnState(final boolean connected) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                switch (state) {
-                    case NOT_CONNECTED:
-                        connStateView.newState(R.string.conn_to_server, color(R.color.text_error_color), true);
-                        setEnable(false, speedControl, steeringControl);
-                        pingTextView.setVisibility(View.INVISIBLE);
-                        break;
-                    case WAITING_FOR_ROVER:
-                        connStateView.newState(R.string.wait_for_rover, color(R.color.text_error_color), true);
-                        connectButton.setVisibility(View.GONE);
-                        pingTextView.setVisibility(View.INVISIBLE);
-                        break;
-                    case CONNECTED:
-                        connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
-                        setEnable(true, speedControl, steeringControl, pingTextView);
-                        connectButton.setVisibility(View.GONE);
-                        break;
+                if (connected) {
+                    connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
+                    setEnable(true, speedControl, steeringControl, pingTextView);
+                    connectButton.setVisibility(View.GONE);
+                } else {
+                    connStateView.newState(R.string.conn_to_server, color(R.color.text_error_color), true);
+                    setEnable(false, speedControl, steeringControl);
+                    pingTextView.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -120,18 +107,6 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
             }
         });
     }
-
-    @Override
-    public void updateImage() {
-        runOnUiThread(updateImageView);
-    }
-
-    private final Runnable updateImageView = new Runnable() {
-        @Override
-        public void run() {
-            imageView.setImageBitmap(imageReceiver.getBitmap());
-        }
-    };
 
     @Override
     public void failed(final Exception e) {
@@ -150,6 +125,5 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     protected void onPause() {
         super.onPause();
         if (conn != null) conn.cancel();
-        if (imageReceiver != null) imageReceiver.cancel();
     }
 }

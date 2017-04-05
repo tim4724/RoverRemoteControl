@@ -1,12 +1,11 @@
 package com.tim.domi.remotecontrol;
 
-import android.util.Log;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
 public class RemoteControl {
@@ -14,9 +13,9 @@ public class RemoteControl {
 
     private final Listener listener;
     private DatagramSocket socket;
-    private ConnectionState state;
 
     private Thread sender, receiver;
+    private boolean connected;
 
     public RemoteControl(Listener listener) throws SocketException {
         this.listener = listener;
@@ -26,8 +25,7 @@ public class RemoteControl {
 
     public void start() {
         cancel();
-        state = ConnectionState.NOT_CONNECTED;
-        receiver = new Receiver(5000);
+        receiver = new Receiver();
         sender = new Sender();
         receiver.start();
         sender.start();
@@ -44,15 +42,15 @@ public class RemoteControl {
         @Override
         public void run() {
             try {
-                DatagramPacket packet = new DatagramPacket(data, 0, data.length, InetAddress.getByName("tv_test.dd-dns.de"), 3842);
+                DatagramPacket packet = new DatagramPacket(data, 0, data.length, InetAddress.getByName("192.168.13.38"), 5005);
                 while (!cancelled) {
                     try {
-                        Util.putInt((int) System.currentTimeMillis(), data, 2);
+                        Util.putInt((int) System.currentTimeMillis(), data, 0);
                         socket.send(packet);
                     } catch (IOException e) {
                         errorOccurred(e);
                     }
-                    if (!interrupted() && !cancelled) Util.sleep(150);
+                    if (!interrupted() && !cancelled) Util.sleep(250);
                 }
             } catch (UnknownHostException e) {
                 e.printStackTrace();
@@ -62,64 +60,50 @@ public class RemoteControl {
         }
 
         void newData(int speed, int steering) {
-            data[0] = (byte) speed;
-            data[1] = (byte) steering;
+            data[4] = (byte) speed;
+            data[5] = (byte) steering;
             this.interrupt();
         }
     }
 
     private class Receiver extends Thread {
         private boolean cancelled;
-        private final int connectTimeout;
-
-        Receiver(int connectTimeout) {
-            this.connectTimeout = connectTimeout;
-        }
 
         @Override
         public void run() {
-            byte[] data = new byte[10];
+            byte[] data = new byte[6];
             DatagramPacket packet = new DatagramPacket(data, data.length);
             long connectedAt = System.currentTimeMillis();
             while (!cancelled) {
                 try {
-                    //check for connection timeout
-                    if (connectedAt + connectTimeout < System.currentTimeMillis()) {
-                        listener.failed(new IOException("Timout while trying to connect"));
-                        cancel();
-                    }
                     //receive
                     socket.receive(packet);
-                    state = parse(packet.getData());
-                    if (state == ConnectionState.CONNECTED)
-                        connectedAt = System.currentTimeMillis();
+                    setConnected(true);
+                    connectedAt = System.currentTimeMillis();
+                    listener.pingUpdate(((int) connectedAt) - Util.readInt(packet.getData(), 0));
+                } catch (SocketTimeoutException e) {
+                    if (System.currentTimeMillis() - connectedAt > 5000) errorOccurred(e);
+                    setConnected(false);
+                    Util.sleep(25);
                 } catch (IOException e) {
                     errorOccurred(e);
                     Util.sleep(25);
                 }
             }
         }
-
-        private ConnectionState parse(byte[] data) {
-            int pingToServer = ((int) System.currentTimeMillis()) - Util.readInt(data, 2);
-            int pingServerRover = Util.readInt(data, 6);
-            Log.d(TAG, "Ping to server: " + pingToServer + ";\t ping server rover: " + pingServerRover);
-
-            ConnectionState newState = (pingServerRover == -1) ? ConnectionState.WAITING_FOR_ROVER : ConnectionState.CONNECTED;
-            if (newState != state) {
-                Log.d(TAG, newState.name());
-                listener.updateConnState(newState);
-            }
-            if (newState == ConnectionState.CONNECTED)
-                listener.pingUpdate(pingToServer + pingServerRover);
-            return newState;
-        }
     }
 
     private void errorOccurred(Exception e) {
-        state = ConnectionState.NOT_CONNECTED;
-        Log.d(TAG, state.name() + ' ' + e.getMessage());
-        listener.updateConnState(state);
+        cancel();
+        listener.updateConnState(false);
+        listener.failed(e);
+    }
+
+    private void setConnected(boolean connected) {
+        if (this.connected != connected) {
+            this.connected = connected;
+            listener.updateConnState(connected);
+        }
     }
 
     public void cancel() {
@@ -131,17 +115,14 @@ public class RemoteControl {
             ((Receiver) receiver).cancelled = true;
             receiver.interrupt();
         }
+        connected = false;
     }
 
     public interface Listener {
-        void updateConnState(ConnectionState state);
+        void updateConnState(boolean connected);
 
         void pingUpdate(int ping);
 
         void failed(Exception e);
-    }
-
-    public enum ConnectionState {
-        NOT_CONNECTED, WAITING_FOR_ROVER, CONNECTED
     }
 }
