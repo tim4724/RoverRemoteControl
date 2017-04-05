@@ -3,7 +3,6 @@
     <string name="connect_button">connect</string>
 
     <string name="conn_none">not connected</string>
-    <string name="conn_to_server">connecting to server</string>
-    <string name="wait_for_rover">waiting for rover</string>
+    <string name="conn_load">connecting…</string>
     <string name="conn_success">connected</string>
 </resources>

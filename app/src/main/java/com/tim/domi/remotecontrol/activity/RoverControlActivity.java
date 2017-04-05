@@ -58,7 +58,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
             conn.newData(speedControl.getProgress(), steeringControl.getProgress());
 
             connectButton.setEnabled(false);
-            connStateView.newState(R.string.conn_to_server, color(R.color.text_loading_color), true);
+            connStateView.newState(R.string.conn_load, color(R.color.text_loading_color), true);
         } catch (Exception e) {
             failed(e);
         }
@@ -90,7 +90,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
                     setEnable(true, speedControl, steeringControl, pingTextView);
                     connectButton.setVisibility(View.GONE);
                 } else {
-                    connStateView.newState(R.string.conn_to_server, color(R.color.text_error_color), true);
+                    connStateView.newState(R.string.conn_load, color(R.color.text_error_color), true);
                     setEnable(false, speedControl, steeringControl);
                     pingTextView.setVisibility(View.INVISIBLE);
                 }
