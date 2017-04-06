@@ -4,7 +4,7 @@ import android.util.Log;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
@@ -41,7 +41,8 @@ public class RemoteControl {
         @Override
         public void run() {
             try {
-                DatagramPacket packet = new DatagramPacket(data, 0, data.length, InetAddress.getByName("192.168.13.38"), 5005);
+                DatagramPacket packet = new DatagramPacket(data, data.length,
+                        new InetSocketAddress("192.168.13.38", 5005));
                 Log.d(TAG, "try to connect to " + packet.getSocketAddress());
                 while (!cancelled) {
                     Util.putInt((int) System.currentTimeMillis(), data, 0);

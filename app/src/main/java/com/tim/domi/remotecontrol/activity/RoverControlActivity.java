@@ -88,8 +88,10 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
                     steeringView.setVisibility(View.VISIBLE);
                     connectButton.setVisibility(View.GONE);
                 }
-                connStateView.newState(connected ? R.string.conn_success : R.string.conn_load,
-                        color(connected ? R.color.text_success_color : R.color.text_error_color), !connected);
+                connStateView.setText(connected ? R.string.conn_success : R.string.conn_load);
+                connStateView.setColor(color(connected ? R.color.text_success_color : R.color.text_error_color));
+                connStateView.showProgress(!connected);
+
                 pingTextView.setVisibility(connected ? View.VISIBLE : View.INVISIBLE);
             }
         });
