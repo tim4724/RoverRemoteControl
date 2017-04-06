@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="text_nomal_color">@android:color/white</color>
-    <color name="text_loading_color">@android:color/holo_blue_light</color>
-    <color name="text_error_color">@android:color/holo_red_dark</color>
-    <color name="text_success_color">@android:color/holo_green_dark</color>
+    <color name="text_nomal_color">#AAFFFFFF</color>
+    <color name="text_loading_color">#2196F3</color>
+    <color name="text_error_color">#D50000</color>
+    <color name="text_success_color">#4BB543</color>
 </resources>

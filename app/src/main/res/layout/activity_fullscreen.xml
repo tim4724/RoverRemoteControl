@@ -20,7 +20,7 @@
         android:paddingTop="0dp"
         android:progress="50"
         android:progressDrawable="@android:color/transparent"
-        android:thumb="@drawable/adjust"
+        android:thumb="@drawable/circle2"
         android:visibility="invisible"/>
 
     <SeekBar
