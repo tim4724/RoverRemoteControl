@@ -36,7 +36,8 @@ public class RemoteControl {
 
     private class Sender extends Thread {
         private boolean cancelled;
-        private byte[] data = new byte[6];
+        private byte[] data = new byte[10];
+        private int seqenceNr = 0;
 
         @Override
         public void run() {
@@ -45,7 +46,8 @@ public class RemoteControl {
                         new InetSocketAddress("192.168.13.38", 5005));
                 Log.d(TAG, "try to connect to " + packet.getSocketAddress());
                 while (!cancelled) {
-                    Util.putInt((int) System.currentTimeMillis(), data, 0);
+                    Util.putInt(seqenceNr++, data, 0);
+                    Util.putInt((int) System.currentTimeMillis(), data, 4);
                     socket.send(packet);
 
                     if (!cancelled) Util.sleepUninterruptibly(100);//max send 10 packets a second
@@ -57,8 +59,8 @@ public class RemoteControl {
         }
 
         void newData(int speed, int steering) {
-            data[4] = (byte) speed;
-            data[5] = (byte) steering;
+            data[8] = (byte) speed;
+            data[9] = (byte) steering;
             this.interrupt();
         }
     }
@@ -68,7 +70,7 @@ public class RemoteControl {
 
         @Override
         public void run() {
-            byte[] data = new byte[6];
+            byte[] data = new byte[10];
             DatagramPacket packet = new DatagramPacket(data, data.length);
             long connectedAt = System.currentTimeMillis();
 
@@ -79,7 +81,7 @@ public class RemoteControl {
 
                         updateConnState(true);
                         connectedAt = System.currentTimeMillis();
-                        listener.pingUpdate(((int) connectedAt) - Util.readInt(packet.getData(), 0));
+                        listener.pingUpdate(((int) connectedAt) - Util.readInt(data, 4));
                     } catch (SocketTimeoutException e) {
                         updateConnState(false);
                         if (System.currentTimeMillis() - connectedAt > 4000) throw e;
