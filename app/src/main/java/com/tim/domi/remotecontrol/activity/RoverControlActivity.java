@@ -3,7 +3,6 @@ package com.tim.domi.remotecontrol.activity;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,36 +25,35 @@ import org.androidannotations.annotations.WindowFeature;
 @WindowFeature(Window.FEATURE_NO_TITLE)
 public class RoverControlActivity extends BaseActivity implements RemoteControl.Listener {
 
-    @ViewById(R.id.speed_control_view) SeekBar speedControl;
-    @ViewById(R.id.steering_control_view) SeekBar steeringControl;
+    @ViewById(R.id.speed_control_view) SeekBar speedView;
+    @ViewById(R.id.steering_control_view) SeekBar steeringView;
     @ViewById(R.id.connect_button) Button connectButton;
     @ViewById(R.id.conn_state_view) ConnStateView connStateView;
     @ViewById(R.id.ping_view) TextView pingTextView;
-    @ViewById(R.id.imageView) ImageView imageView;
 
-    private RemoteControl conn;
+    private RemoteControl remote;
 
     @Override
     protected void onResume() {
         super.onResume();
         connStateView.newState(R.string.conn_none, color(R.color.text_nomal_color), false);
-        if (conn != null) connect();
+        if (remote != null) connect();
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         // make the steering slider the same size as the speed slider
-        steeringControl.getLayoutParams().width = speedControl.getMeasuredHeight();
-        steeringControl.setLayoutParams(steeringControl.getLayoutParams());
+        steeringView.getLayoutParams().width = speedView.getMeasuredHeight();
+        steeringView.setLayoutParams(steeringView.getLayoutParams());
     }
 
     @Click(R.id.connect_button)
     public void connect() {
         try {
-            if (conn == null) conn = new RemoteControl(this);
-            conn.start();
-            conn.newData(speedControl.getProgress(), steeringControl.getProgress());
+            if (remote == null) remote = new RemoteControl(this);
+            remote.start();
+            remote.newData(speedView.getProgress(), steeringView.getProgress());
 
             connectButton.setEnabled(false);
             connStateView.newState(R.string.conn_load, color(R.color.text_loading_color), true);
@@ -67,7 +65,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     @SeekBarProgressChange({R.id.speed_control_view, R.id.steering_control_view})
     void onProgressChanged(SeekBar seekBar, int i) {
         if (Math.abs(i - seekBar.getMax() / 2) < 5) seekBar.setProgress(seekBar.getMax() / 2);
-        if (conn != null) conn.newData(speedControl.getProgress(), steeringControl.getProgress());
+        if (remote != null) remote.newData(speedView.getProgress(), steeringView.getProgress());
     }
 
     @SeekBarTouchStart({R.id.speed_control_view, R.id.steering_control_view})
@@ -86,14 +84,13 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
             @Override
             public void run() {
                 if (connected) {
-                    connStateView.newState(R.string.conn_success, color(R.color.text_success_color), false);
-                    setEnable(true, speedControl, steeringControl, pingTextView);
+                    speedView.setVisibility(View.VISIBLE);
+                    steeringView.setVisibility(View.VISIBLE);
                     connectButton.setVisibility(View.GONE);
-                } else {
-                    connStateView.newState(R.string.conn_load, color(R.color.text_error_color), true);
-                    setEnable(false, speedControl, steeringControl);
-                    pingTextView.setVisibility(View.INVISIBLE);
                 }
+                connStateView.newState(connected ? R.string.conn_success : R.string.conn_load,
+                        color(connected ? R.color.text_success_color : R.color.text_error_color), !connected);
+                pingTextView.setVisibility(connected ? View.VISIBLE : View.INVISIBLE);
             }
         });
     }
@@ -103,7 +100,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                pingTextView.setText("" + Math.round(ping / 2f));
+                pingTextView.setText(String.valueOf(Math.round(ping / 2f)));
             }
         });
     }
@@ -113,8 +110,6 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                setEnable(false, speedControl, steeringControl);
-                conn = null;
                 recreate();
                 Toast.makeText(RoverControlActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
             }
@@ -124,6 +119,6 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     @Override
     protected void onPause() {
         super.onPause();
-        if (conn != null) conn.cancel();
+        if (remote != null) remote.cancel();
     }
 }

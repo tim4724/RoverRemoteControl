@@ -29,6 +29,7 @@ public class VerticalSeekBar extends SeekBar {
 
     @Override
     protected synchronized void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        //noinspection SuspiciousNameCombination
         super.onMeasure(heightMeasureSpec, widthMeasureSpec);
         setMeasuredDimension(getMeasuredHeight(), getMeasuredWidth());
     }
@@ -57,6 +58,8 @@ public class VerticalSeekBar extends SeekBar {
                 break;
             case MotionEvent.ACTION_UP:
                 if (l != null) l.onStopTrackingTouch(this);
+                trackTouchEvent(event);
+                break;
             case MotionEvent.ACTION_MOVE:
                 trackTouchEvent(event);
                 break;

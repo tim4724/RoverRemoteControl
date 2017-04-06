@@ -1,21 +1,20 @@
 package com.tim.domi.remotecontrol;
 
-import java.io.IOException;
+import android.util.Log;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 
 public class RemoteControl {
     private static final String TAG = "RemoteControl";
 
     private final Listener listener;
     private DatagramSocket socket;
-
-    private Thread sender, receiver;
-    private boolean connected;
+    private Sender sender;
+    private Receiver receiver;
 
     public RemoteControl(Listener listener) throws SocketException {
         this.listener = listener;
@@ -32,7 +31,7 @@ public class RemoteControl {
     }
 
     public void newData(int speed, int steering) {
-        ((Sender) sender).newData(speed, steering);
+        sender.newData(speed, steering);
     }
 
     private class Sender extends Thread {
@@ -43,19 +42,16 @@ public class RemoteControl {
         public void run() {
             try {
                 DatagramPacket packet = new DatagramPacket(data, 0, data.length, InetAddress.getByName("192.168.13.38"), 5005);
+                Log.d(TAG, "try to connect to " + packet.getSocketAddress());
                 while (!cancelled) {
-                    try {
-                        Util.putInt((int) System.currentTimeMillis(), data, 0);
-                        socket.send(packet);
-                    } catch (IOException e) {
-                        errorOccurred(e);
-                    }
+                    Util.putInt((int) System.currentTimeMillis(), data, 0);
+                    socket.send(packet);
+
+                    if (!cancelled) Util.sleepUninterruptibly(100);//max send 10 packets a second
                     if (!interrupted() && !cancelled) Util.sleep(250);
                 }
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-                listener.failed(e);
-                cancel();
+            } catch (Exception e) {
+                errorOccurred(e);
             }
         }
 
@@ -67,55 +63,55 @@ public class RemoteControl {
     }
 
     private class Receiver extends Thread {
-        private boolean cancelled;
+        private boolean cancelled, connected;
 
         @Override
         public void run() {
             byte[] data = new byte[6];
             DatagramPacket packet = new DatagramPacket(data, data.length);
             long connectedAt = System.currentTimeMillis();
-            while (!cancelled) {
-                try {
-                    //receive
-                    socket.receive(packet);
-                    setConnected(true);
-                    connectedAt = System.currentTimeMillis();
-                    listener.pingUpdate(((int) connectedAt) - Util.readInt(packet.getData(), 0));
-                } catch (SocketTimeoutException e) {
-                    if (System.currentTimeMillis() - connectedAt > 5000) errorOccurred(e);
-                    setConnected(false);
-                    Util.sleep(25);
-                } catch (IOException e) {
-                    errorOccurred(e);
-                    Util.sleep(25);
+
+            try {
+                while (!cancelled) {
+                    try {
+                        socket.receive(packet);
+
+                        updateConnState(true);
+                        connectedAt = System.currentTimeMillis();
+                        listener.pingUpdate(((int) connectedAt) - Util.readInt(packet.getData(), 0));
+                    } catch (SocketTimeoutException e) {
+                        updateConnState(false);
+                        if (System.currentTimeMillis() - connectedAt > 4000) throw e;
+                    }
                 }
+            } catch (Exception e) {
+                errorOccurred(e);
+            }
+        }
+
+        private void updateConnState(boolean connected) {
+            if (this.connected != connected) {
+                this.connected = connected;
+                listener.updateConnState(connected);
+                Log.d(TAG, (!connected ? "not " : "") + "connected to rover");
             }
         }
     }
 
     private void errorOccurred(Exception e) {
-        cancel();
-        listener.updateConnState(false);
+        Log.e(TAG, "error occurred", e);
         listener.failed(e);
-    }
-
-    private void setConnected(boolean connected) {
-        if (this.connected != connected) {
-            this.connected = connected;
-            listener.updateConnState(connected);
-        }
+        cancel();
     }
 
     public void cancel() {
-        if (sender != null) {
-            ((Sender) sender).cancelled = true;
-            sender.interrupt();
+        if (sender != null && receiver != null) {
+            Log.d(TAG, "cancel");
+            sender.cancelled = true;
+            receiver.cancelled = true;
+            sender = null;
+            receiver = null;
         }
-        if (receiver != null) {
-            ((Receiver) receiver).cancelled = true;
-            receiver.interrupt();
-        }
-        connected = false;
     }
 
     public interface Listener {
