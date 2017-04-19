@@ -20,7 +20,7 @@ android {
 }
 
 dependencies {
-    apt "org.androidannotations:androidannotations:4.2.0"
-    compile "org.androidannotations:androidannotations-api:4.2.0"
+    apt "org.androidannotations:androidannotations:4.3.0"
+    compile "org.androidannotations:androidannotations-api:4.3.0"
 }
 

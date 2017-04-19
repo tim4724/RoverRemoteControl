@@ -2,21 +2,27 @@ package com.tim.domi.remotecontrol;
 
 import android.util.Log;
 
+import com.tim.domi.remotecontrol.listener.RemoteListener;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
+import static com.tim.domi.remotecontrol.Util.putInt;
+import static com.tim.domi.remotecontrol.Util.readInt;
+import static com.tim.domi.remotecontrol.Util.sleepUninterruptibly;
+
 public class RemoteControl {
     private static final String TAG = "RemoteControl";
 
-    private final Listener listener;
+    private final RemoteListener listener;
     private DatagramSocket socket;
     private Sender sender;
     private Receiver receiver;
 
-    public RemoteControl(Listener listener) throws SocketException {
+    public RemoteControl(RemoteListener listener) throws SocketException {
         this.listener = listener;
         socket = new DatagramSocket();
         socket.setSoTimeout(1000);
@@ -46,11 +52,11 @@ public class RemoteControl {
                         new InetSocketAddress("192.168.13.38", 5005));
                 Log.d(TAG, "try to connect to " + packet.getSocketAddress());
                 while (!cancelled) {
-                    Util.putInt(seqenceNr++, data, 0);
-                    Util.putInt((int) System.currentTimeMillis(), data, 4);
+                    putInt(seqenceNr++, data, 0);
+                    putInt((int) System.currentTimeMillis(), data, 4);
                     socket.send(packet);
 
-                    if (!cancelled) Util.sleepUninterruptibly(100);//max send 10 packets a second
+                    if (!cancelled) sleepUninterruptibly(100);//max send 10 packets a second
                     if (!interrupted() && !cancelled) Util.sleep(250);
                 }
             } catch (Exception e) {
@@ -78,13 +84,15 @@ public class RemoteControl {
                 while (!cancelled) {
                     try {
                         socket.receive(packet);
-
-                        updateConnState(true);
                         connectedAt = System.currentTimeMillis();
-                        listener.pingUpdate(((int) connectedAt) - Util.readInt(data, 4));
+                        updateConnState(true);
+                        listener.pingUpdate(((int) connectedAt) - readInt(data, 4));
                     } catch (SocketTimeoutException e) {
                         updateConnState(false);
-                        if (System.currentTimeMillis() - connectedAt > 4000) throw e;
+                        if (System.currentTimeMillis() - connectedAt > 4000) {
+                            //no packet received for 4 seconds ->  rethrow sockettimeout exception
+                            throw e;
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -95,8 +103,13 @@ public class RemoteControl {
         private void updateConnState(boolean connected) {
             if (this.connected != connected) {
                 this.connected = connected;
-                listener.updateConnState(connected);
-                Log.d(TAG, (!connected ? "not " : "") + "connected to rover");
+                if (connected) {
+                    Log.d(TAG, "connected to rover");
+                    listener.onConnected();
+                } else {
+                    Log.d(TAG, "not connected to rover");
+                    listener.onNotConnected();
+                }
             }
         }
     }
@@ -108,20 +121,8 @@ public class RemoteControl {
     }
 
     public void cancel() {
-        if (sender != null && receiver != null) {
-            Log.d(TAG, "cancel");
-            sender.cancelled = true;
-            receiver.cancelled = true;
-            sender = null;
-            receiver = null;
-        }
-    }
-
-    public interface Listener {
-        void updateConnState(boolean connected);
-
-        void pingUpdate(int ping);
-
-        void failed(Exception e);
+        Log.d(TAG, "cancel");
+        if (sender != null) sender.cancelled = true;
+        if (receiver != null) receiver.cancelled = true;
     }
 }

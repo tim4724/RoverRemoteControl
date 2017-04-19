@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import com.tim.domi.remotecontrol.RemoteControl;
 import com.tim.domi.remotecontrol.R;
+import com.tim.domi.remotecontrol.listener.RemoteListener;
 import com.tim.domi.remotecontrol.widget.ConnStateView;
 
 import org.androidannotations.annotations.Click;
@@ -17,13 +18,14 @@ import org.androidannotations.annotations.Fullscreen;
 import org.androidannotations.annotations.SeekBarProgressChange;
 import org.androidannotations.annotations.SeekBarTouchStart;
 import org.androidannotations.annotations.SeekBarTouchStop;
+import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 import org.androidannotations.annotations.WindowFeature;
 
 @Fullscreen
 @EActivity(R.layout.activity_fullscreen)
 @WindowFeature(Window.FEATURE_NO_TITLE)
-public class RoverControlActivity extends BaseActivity implements RemoteControl.Listener {
+public class RoverControlActivity extends BaseActivity implements RemoteListener {
 
     @ViewById(R.id.speed_control_view) SeekBar speedView;
     @ViewById(R.id.steering_control_view) SeekBar steeringView;
@@ -36,7 +38,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     @Override
     protected void onResume() {
         super.onResume();
-        connStateView.newState(R.string.conn_none, color(R.color.text_nomal_color), false);
+        connStateView.newState(R.string.conn_none, color(R.color.normal_color), false);
         if (remote != null) connect();
     }
 
@@ -56,7 +58,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
             remote.newData(speedView.getProgress(), steeringView.getProgress());
 
             connectButton.setEnabled(false);
-            connStateView.newState(R.string.conn_load, color(R.color.text_loading_color), true);
+            connStateView.newState(R.string.conn_load, color(R.color.loading_color), true);
         } catch (Exception e) {
             failed(e);
         }
@@ -79,43 +81,33 @@ public class RoverControlActivity extends BaseActivity implements RemoteControl.
     }
 
     @Override
-    public void updateConnState(final boolean connected) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (connected) {
-                    speedView.setVisibility(View.VISIBLE);
-                    steeringView.setVisibility(View.VISIBLE);
-                    connectButton.setVisibility(View.GONE);
-                }
-                connStateView.setText(connected ? R.string.conn_success : R.string.conn_load);
-                connStateView.setColor(color(connected ? R.color.text_success_color : R.color.text_error_color));
-                connStateView.showProgress(!connected);
-
-                pingTextView.setVisibility(connected ? View.VISIBLE : View.INVISIBLE);
-            }
-        });
+    @UiThread
+    public void onConnected() {
+        connectButton.setVisibility(View.GONE);
+        speedView.setVisibility(View.VISIBLE);
+        steeringView.setVisibility(View.VISIBLE);
+        connStateView.newState(R.string.conn_success, color(R.color.success_color), false);
+        pingTextView.setVisibility(View.VISIBLE);
     }
 
     @Override
+    @UiThread
+    public void onNotConnected() {
+        connStateView.newState(R.string.conn_load, color(R.color.error_color), true);
+        pingTextView.setVisibility(View.INVISIBLE);
+    }
+
+    @Override
+    @UiThread
     public void pingUpdate(final int ping) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                pingTextView.setText(String.valueOf(Math.round(ping / 2f)));
-            }
-        });
+        pingTextView.setText(String.valueOf(Math.round(ping / 2f)));
     }
 
     @Override
+    @UiThread
     public void failed(final Exception e) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                recreate();
-                Toast.makeText(RoverControlActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
-            }
-        });
+        recreate();
+        Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
     }
 
     @Override

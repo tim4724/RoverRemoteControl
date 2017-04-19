@@ -20,7 +20,7 @@ public class ConnStateView extends LinearLayout {
 
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.StateView, 0, 0);
         String text = a.getString(R.styleable.StateView_text);
-        int color = a.getColor(R.styleable.StateView_color, getResources().getColor(R.color.text_nomal_color));
+        int color = a.getColor(R.styleable.StateView_color, getResources().getColor(R.color.normal_color));
         boolean showProgress = a.getBoolean(R.styleable.StateView_showProgress, false);
         a.recycle();
 
@@ -33,37 +33,17 @@ public class ConnStateView extends LinearLayout {
         textView = (TextView) getChildAt(0);
         progressBar = (ProgressBar) getChildAt(1);
 
-        setText(text);
-        setColor(color);
-        showProgress(showProgress);
+        newState(text, color, showProgress);
     }
 
     public void newState(int text, int color, boolean showProgress) {
-        setText(text);
-        setColor(color);
-        showProgress(showProgress);
+        newState(getResources().getString(text), color, showProgress);
     }
 
     public void newState(String text, int color, boolean showProgress) {
-        setText(text);
-        setColor(color);
-        showProgress(showProgress);
-    }
-
-    public void setColor(int color) {
+        textView.setText(text);
         textView.setTextColor(color);
         progressBar.getIndeterminateDrawable().setColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN);
-    }
-
-    public void setText(int text) {
-        textView.setText(text);
-    }
-
-    public void setText(String text) {
-        textView.setText(text);
-    }
-
-    public void showProgress(boolean showProgress) {
         progressBar.setVisibility(showProgress ? VISIBLE : GONE);
     }
 }
