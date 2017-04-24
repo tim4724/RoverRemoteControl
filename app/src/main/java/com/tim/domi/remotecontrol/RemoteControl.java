@@ -15,6 +15,7 @@ import static com.tim.domi.remotecontrol.Util.readInt;
 import static com.tim.domi.remotecontrol.Util.sleepUninterruptibly;
 
 public class RemoteControl {
+    private static byte fotoCounter=0;
     private static final String TAG = "RemoteControl";
 
     private final RemoteListener listener;
@@ -24,7 +25,7 @@ public class RemoteControl {
 
     public RemoteControl(RemoteListener listener) throws SocketException {
         this.listener = listener;
-        socket = new DatagramSocket();
+        socket = new DatagramSocket(8765);
         socket.setSoTimeout(1000);
     }
 
@@ -37,19 +38,22 @@ public class RemoteControl {
     }
 
     public void newData(int speed, int steering) {
-        sender.newData(speed, steering);
+        sender.newData(speed, steering,fotoCounter);
+    }
+    public void takeFoto(){
+        sender.newData(50,50,++fotoCounter);
     }
 
     private class Sender extends Thread {
         private boolean cancelled;
-        private byte[] data = new byte[10];
+        private byte[] data = new byte[11];
         private int seqenceNr = 0;
 
         @Override
         public void run() {
             try {
                 DatagramPacket packet = new DatagramPacket(data, data.length,
-                        new InetSocketAddress("192.168.13.38", 5005));
+                        new InetSocketAddress("192.168.2.115", 8765));
                 Log.d(TAG, "try to connect to " + packet.getSocketAddress());
                 while (!cancelled) {
                     putInt(seqenceNr++, data, 0);
@@ -64,9 +68,10 @@ public class RemoteControl {
             }
         }
 
-        void newData(int speed, int steering) {
+        void newData(int speed, int steering,int foto) {
             data[8] = (byte) speed;
             data[9] = (byte) steering;
+            data[10] = (byte) foto;
             this.interrupt();
         }
     }
@@ -76,7 +81,7 @@ public class RemoteControl {
 
         @Override
         public void run() {
-            byte[] data = new byte[10];
+            byte[] data = new byte[11];
             DatagramPacket packet = new DatagramPacket(data, data.length);
             long connectedAt = System.currentTimeMillis();
 

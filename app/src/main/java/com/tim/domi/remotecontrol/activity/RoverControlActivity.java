@@ -1,12 +1,18 @@
 package com.tim.domi.remotecontrol.activity;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Environment;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.tim.domi.remotecontrol.FotoStream;
 import com.tim.domi.remotecontrol.RemoteControl;
 import com.tim.domi.remotecontrol.R;
 import com.tim.domi.remotecontrol.listener.RemoteListener;
@@ -21,6 +27,10 @@ import org.androidannotations.annotations.SeekBarTouchStop;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
 import org.androidannotations.annotations.WindowFeature;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 @Fullscreen
 @EActivity(R.layout.activity_fullscreen)
@@ -114,5 +124,57 @@ public class RoverControlActivity extends BaseActivity implements RemoteListener
     protected void onPause() {
         super.onPause();
         if (remote != null) remote.cancel();
+    }
+
+    public void recieveFoto(View view){
+        System.out.println("Button!");
+        if(remote != null) remote.takeFoto();
+        try {
+            FotoStream foto = new FotoStream(this);
+            foto.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public void saveFoto(View view){
+        System.out.println("Button!");
+        try {
+            ImageView jpgView = (ImageView)findViewById(R.id.imageView);
+            Bitmap bitmap = BitmapFactory.decodeFile("/storage/emulated/0/Pictures/FotosRover/abc.png");
+            jpgView.setImageBitmap(bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void saveByte(byte[] bytes) {
+        try {
+            File file = new File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_PICTURES), "FotosRover");
+            if (!file.mkdirs()) {
+                System.out.println("Directory not created");
+            }
+            File file2 = new File(file, "abc.png");
+            FileOutputStream fos = new FileOutputStream(file2);
+            fos.write(bytes);
+            fos.flush();
+            fos.close();
+
+            //setContentView(R.layout.activity_fullscreen);
+            //ImageView jpgView = (ImageView)findViewById(R.id.imageView);
+            //Bitmap bitmap = BitmapFactory.decodeFile("/storage/emulated/0/Pictures/FotosRover/abc.png");
+            //jpgView.setImageBitmap(bitmap);
+
+            //Intent intent = new Intent();
+            //intent.setAction(Intent.ACTION_VIEW);
+            //intent.setDataAndType(Uri.decode("content:///storage/emulated/0/Pictures/FotosRover"),"abc.png");
+            //intent.setDataAndType(Uri.fromFile(file), "*/*");
+            //intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            //startActivity(intent);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("erfolgreich geschrieben");
+
     }
 }
