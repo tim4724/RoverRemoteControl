@@ -136,7 +136,7 @@ public class RoverControlActivity extends BaseActivity implements RemoteListener
             e.printStackTrace();
         }
     }
-    public void saveFoto(View view){
+    public void showFoto(View view){
         System.out.println("Button!");
         try {
             ImageView jpgView = (ImageView)findViewById(R.id.imageView);
@@ -146,7 +146,6 @@ public class RoverControlActivity extends BaseActivity implements RemoteListener
             e.printStackTrace();
         }
     }
-
     public void saveByte(byte[] bytes) {
         try {
             File file = new File(Environment.getExternalStoragePublicDirectory(

@@ -3,9 +3,7 @@ package com.tim.domi.remotecontrol;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.view.View;
-import android.widget.ImageView;
 
 import com.tim.domi.remotecontrol.activity.BaseActivity;
 import com.tim.domi.remotecontrol.activity.RoverControlActivity;
@@ -37,7 +35,7 @@ public class FotoStream extends Thread{
         ServerSocket welcomeSocket = null;
         try {
             welcomeSocket = new ServerSocket(9788);
-        while(true) {
+
             Socket socket = welcomeSocket.accept();
             InputStream in = socket.getInputStream();
 
@@ -45,11 +43,14 @@ public class FotoStream extends Thread{
             int len = data.readInt();
             byte[] imgBytes = new byte[len];
             data.readFully(imgBytes);
+            in.close();
+            socket.close();
+            welcomeSocket.close();
 
             System.out.println("Received bits: " + imgBytes.length);
             base.saveByte(imgBytes);
 
-        }
+
         
         } catch (IOException e) {
             e.printStackTrace();
