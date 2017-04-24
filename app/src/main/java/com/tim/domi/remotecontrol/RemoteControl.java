@@ -53,7 +53,7 @@ public class RemoteControl {
         public void run() {
             try {
                 DatagramPacket packet = new DatagramPacket(data, data.length,
-                        new InetSocketAddress("192.168.2.115", 8765));
+                        new InetSocketAddress("192.168.2.118", 8765));
                 Log.d(TAG, "try to connect to " + packet.getSocketAddress());
                 while (!cancelled) {
                     putInt(seqenceNr++, data, 0);
